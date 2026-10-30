@@ -1,0 +1,11 @@
+name: zz-pr-probe
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - name: hello
+        run: echo hello-from-pr-probe
